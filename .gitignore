@@ -1,4 +1,4 @@
-﻿# OS
+# OS
 .DS_Store
 Thumbs.db
 
@@ -46,3 +46,4 @@ reports/
 logs/
 tmp/
 
+packages/db/generated/

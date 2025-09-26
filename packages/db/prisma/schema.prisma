@@ -1,0 +1,426 @@
+// Prisma Schema for Nexzo MyProperty
+// Derived from docs/04-data/Database-Design.md
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  LANDLORD_ADMIN
+  PROPERTY_MANAGER
+  TENANT
+  SERVICE_PROVIDER
+  OPS_ADMIN
+  AI_AGENT
+}
+
+enum MeterType {
+  SOLAR
+  GRID
+  WATER
+  GAS
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  SENT
+  PAID
+  OVERDUE
+  VOID
+}
+
+enum TicketStatus {
+  NEW
+  TRIAGED
+  QUOTED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  VERIFIED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+model Tenant {
+  id         String   @id @default(uuid())
+  name       String
+  region     String?
+  status     String   @default("active")
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  users      User[]
+  properties Property[]
+  invoices   Invoice[]
+  ledger     LedgerEntry[]
+  serviceTickets ServiceTicket[]
+  projectLinks   ProjectLink[]
+  complianceStates ComplianceRuleState[]
+  agentAudits AgentAudit[]
+  meters      Meter[]
+  meterReadings MeterReading[]
+  allocationLedgers AllocationLedger[]
+}
+
+model User {
+  id           String    @id @default(uuid())
+  tenantId     String
+  email        String
+  firstName    String?
+  lastName     String?
+  role         UserRole
+  status       String   @default("active")
+  mfaEnabled   Boolean  @default(false)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  tenancies    Tenancy[]
+  invoices     Invoice[]
+  serviceTicketsOpened ServiceTicket[] @relation("TicketOpenedBy")
+  ticketActivities     TicketActivity[]
+  allocationAdjustments AllocationAdjustment[]
+  agentAudits          AgentAudit[]
+
+  @@unique([tenantId, email])
+}
+
+model Property {
+  id                    String   @id @default(uuid())
+  tenantId              String
+  name                  String
+  address               Json
+  timezone              String?
+  utilityAccountNumber  String?
+  solarCapacityKw       Decimal? @db.Decimal(10,2)
+  metadata              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+  units                 Unit[]
+  meters                Meter[]
+  allocationLedgers     AllocationLedger[]
+  invoices              Invoice[]
+  serviceTickets        ServiceTicket[]
+  projectLinks          ProjectLink[]
+  complianceStates      ComplianceRuleState[]
+}
+
+model Unit {
+  id          String   @id @default(uuid())
+  propertyId  String
+  label       String
+  floor       String?
+  squareFeet  Int?
+  active      Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  property    Property @relation(fields: [propertyId], references: [id])
+  tenancies   Tenancy[]
+  meterAssignments MeterAssignment[]
+  allocationLedgers AllocationLedger[]
+  serviceTickets    ServiceTicket[]
+}
+
+model Tenancy {
+  id        String   @id @default(uuid())
+  unitId    String
+  userId    String
+  startDate DateTime
+  endDate   DateTime?
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  unit      Unit     @relation(fields: [unitId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Meter {
+  id          String   @id @default(uuid())
+  tenantId    String
+  propertyId  String
+  type        MeterType
+  makeModel   String?
+  serialNumber String?
+  timezone    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  property    Property @relation(fields: [propertyId], references: [id])
+  readings    MeterReading[]
+  assignments MeterAssignment[]
+}
+
+model MeterAssignment {
+  id        String   @id @default(uuid())
+  unitId    String
+  meterId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  unit      Unit  @relation(fields: [unitId], references: [id])
+  meter     Meter @relation(fields: [meterId], references: [id])
+
+  @@unique([unitId, meterId])
+}
+
+model MeterReading {
+  id             String   @id @default(uuid())
+  tenantId       String
+  meterId        String
+  readingTs      DateTime
+  valueKwh       Decimal  @db.Decimal(12,4)
+  quality        String   @default("actual")
+  source         String?
+  ingestionJobId String?
+  createdAt      DateTime @default(now())
+
+  tenant         Tenant @relation(fields: [tenantId], references: [id])
+  meter          Meter  @relation(fields: [meterId], references: [id])
+
+  @@index([tenantId, meterId, readingTs])
+}
+
+model AllocationLedger {
+  id              String   @id @default(uuid())
+  tenantId        String
+  propertyId      String
+  unitId          String
+  billingPeriod   String
+  solarKwh        Decimal  @db.Decimal(12,4)
+  gridKwh         Decimal  @db.Decimal(12,4)
+  lossKwh         Decimal? @db.Decimal(12,4)
+  allocationMethod String?
+  confidence      Decimal? @db.Decimal(5,2)
+  adjustedBy      String?
+  adjustedAt      DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  property        Property @relation(fields: [propertyId], references: [id])
+  unit            Unit     @relation(fields: [unitId], references: [id])
+  adjustments     AllocationAdjustment[]
+
+  @@unique([tenantId, unitId, billingPeriod])
+}
+
+model AllocationAdjustment {
+  id             String   @id @default(uuid())
+  allocationId   String
+  reason         String
+  deltaKwh       Decimal @db.Decimal(12,4)
+  actorUserId    String?
+  createdAt      DateTime @default(now())
+
+  allocation     AllocationLedger @relation(fields: [allocationId], references: [id])
+  actor          User?            @relation(fields: [actorUserId], references: [id])
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenantUserId  String
+  propertyId    String?
+  billingPeriod String
+  status        InvoiceStatus @default(DRAFT)
+  totalAmount   Decimal  @db.Decimal(12,2)
+  currency      String   @default("USD")
+  issuedAt      DateTime?
+  dueAt         DateTime?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant @relation(fields: [tenantId], references: [id])
+  tenantUser    User   @relation(fields: [tenantUserId], references: [id])
+  property      Property? @relation(fields: [propertyId], references: [id])
+  lines         InvoiceLine[]
+  payments      Payment[]
+  ledgerEntries LedgerEntry[]
+
+  @@index([tenantId, billingPeriod])
+}
+
+model InvoiceLine {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  description String
+  category    String
+  quantity    Decimal @db.Decimal(10,2) @default(1)
+  unitAmount  Decimal @db.Decimal(12,2)
+  totalAmount Decimal @db.Decimal(12,2)
+  taxRate     Decimal? @db.Decimal(5,2)
+  solarBand   String?
+
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  amount      Decimal @db.Decimal(12,2)
+  currency    String @default("USD")
+  status      String @default("pending")
+  processor   String?
+  reference   String?
+  processedAt DateTime?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+}
+
+model LedgerEntry {
+  id              String   @id @default(uuid())
+  tenantId        String
+  invoiceId       String?
+  referenceType   String?
+  referenceId     String?
+  direction       LedgerDirection
+  account         String
+  amount          Decimal @db.Decimal(12,2)
+  currency        String @default("USD")
+  occurredAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  tenant          Tenant  @relation(fields: [tenantId], references: [id])
+  invoice         Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@index([tenantId, occurredAt])
+}
+
+model ServiceTicket {
+  id         String   @id @default(uuid())
+  tenantId   String
+  propertyId String
+  unitId     String?
+  openedById String?
+  status     TicketStatus @default(NEW)
+  priority   TicketPriority @default(MEDIUM)
+  summary    String
+  description String?
+  category   String?
+  attachments Json?
+  slaTargetAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id])
+  unit       Unit?    @relation(fields: [unitId], references: [id])
+  openedBy   User?    @relation("TicketOpenedBy", fields: [openedById], references: [id])
+  activities TicketActivity[]
+  quotes     TicketQuote[]
+  schedules  TicketSchedule[]
+}
+
+model TicketActivity {
+  id           String   @id @default(uuid())
+  ticketId     String
+  actorId      String?
+  action       String
+  payload      Json?
+  createdAt    DateTime @default(now())
+
+  ticket       ServiceTicket @relation(fields: [ticketId], references: [id])
+  actor        User?         @relation(fields: [actorId], references: [id])
+}
+
+model TicketQuote {
+  id           String   @id @default(uuid())
+  ticketId     String
+  providerName String
+  amount       Decimal @db.Decimal(12,2)
+  currency     String @default("USD")
+  status       String @default("pending")
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  ticket       ServiceTicket @relation(fields: [ticketId], references: [id])
+}
+
+model TicketSchedule {
+  id           String   @id @default(uuid())
+  ticketId     String
+  scheduledFor DateTime
+  providerName String?
+  status       String @default("pending")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ticket       ServiceTicket @relation(fields: [ticketId], references: [id])
+}
+
+model ProjectLink {
+  id               String   @id @default(uuid())
+  tenantId         String
+  propertyId       String
+  originfdProjectId String?
+  projectType      String
+  status           String   @default("requested")
+  scopeSummary     String?
+  targetLiveDate   DateTime?
+  syncPayload      Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  property         Property @relation(fields: [propertyId], references: [id])
+}
+
+model ComplianceRuleState {
+  id          String   @id @default(uuid())
+  tenantId    String
+  propertyId  String
+  region      String
+  rulePackId  String
+  status      String   @default("active")
+  metadata    Json?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  property    Property @relation(fields: [propertyId], references: [id])
+}
+
+model AgentAudit {
+  id           String   @id @default(uuid())
+  tenantId     String
+  agentId      String
+  userId       String?
+  toolName     String
+  outcome      String
+  latencyMs    Int
+  traceId      String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  tenant       Tenant @relation(fields: [tenantId], references: [id])
+  user         User?   @relation(fields: [userId], references: [id])
+}
