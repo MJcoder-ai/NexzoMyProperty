@@ -1,0 +1,958 @@
+openapi: 3.1.0
+info:
+  title: OriginFlow Platform API
+  version: 2.3.1
+  description: |
+    Machine-readable API for the OriginFlow multi-tenant, multi-user, multi-domain agentic platform.
+    This specification follows our API Governance standards (naming, versioning, examples, auth) and
+    the Versioning Policy (URI major versioning with optional header override). It also encodes AI
+    metadata requirements on ML/agent endpoints and safe-write rules using JSON Patch for ODL‑SD.
+    
+
+    Key references:
+      • API Governance (standards, testing & spectral rules)
+
+      • Versioning Policy (SemVer, deprecation flow, sunset headers)
+
+      • Threat Model (STRIDE, controls like rate limiting and tracing)
+
+      • ODL‑SD v4.1 (single source of truth document & JSON‑Patch contract)
+
+      • User & Access Structure (RBAC, phase gates, approvals)
+
+      • AI Cookbook patterns (structured I/O, fallbacks, validation, tool registry)
+
+  termsOfService: https://example.com/terms
+  contact:
+    name: API Team
+    email: api@example.com
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+externalDocs:
+  description: Developer portal
+  url: https://developer.example.com
+servers:
+  - url: https://api.example.com/v1
+    description: Production (v1)
+  - url: https://staging-api.example.com/v1
+    description: Staging
+  - url: https://dev-api.example.com/v1
+    description: Development
+tags:
+  - name: Health
+    description: Health and readiness
+  - name: Auth
+    description: Authentication and token management
+  - name: Tenants
+    description: Multi-tenant controls
+  - name: Users
+    description: User management
+  - name: Projects
+    description: Projects and portfolios
+  - name: ODL
+    description: ODL‑SD document operations (contract-first, JSON‑Patch)
+  - name: AI Tools
+    description: Agent tool execution with structured I/O
+  - name: AI Agents
+    description: Planner, orchestrator, and agent endpoints
+  - name: AI Evals
+    description: Offline/online evaluation runs
+  - name: Observability
+    description: Tracing, metrics, and logs
+  - name: Governance
+    description: ADRs, policy exceptions, deprecation
+security:
+  - oauth2: [ ]
+  - apiKey: [ ]
+paths:
+  /health:
+    get:
+      tags: [Health]
+      operationId: get-health
+      summary: Health & readiness
+      description: Returns service status and build metadata.
+      responses:
+        "200":
+          description: OK
+          headers:
+            API-Version:
+              $ref: "#/components/headers/API-Version"
+          content:
+            application/json:
+              examples:
+                ok:
+                  value:
+                    status: ok
+                    build:
+                      version: "2.3.1"
+                      git_sha: "abc123def"
+                      time: "2025-09-01T12:00:00Z"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /auth/token:
+    post:
+      tags: [Auth]
+      operationId: create-token
+      summary: OAuth2 token (client credentials / authorization code exchange)
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                grant_type:
+                  type: string
+                  enum: [authorization_code, client_credentials, refresh_token]
+                code:
+                  type: string
+                refresh_token:
+                  type: string
+                redirect_uri:
+                  type: string
+                code_verifier:
+                  type: string
+              required: [grant_type]
+      responses:
+        "200":
+          description: Token response
+          headers:
+            API-Version:
+              $ref: "#/components/headers/API-Version"
+          content:
+            application/json:
+              examples:
+                token:
+                  value:
+                    token_type: Bearer
+                    access_token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    expires_in: 3600
+                    refresh_token: r1..
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /tenants:
+    get:
+      tags: [Tenants]
+      operationId: list-tenants
+      summary: List tenants (admin only)
+      parameters:
+        - $ref: "#/components/parameters/Accept-Version"
+      responses:
+        "200":
+          description: A list of tenants
+          headers:
+            API-Version:
+              $ref: "#/components/headers/API-Version"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tenant"
+              examples:
+                sample:
+                  value:
+                    - id: "ten_123"
+                      name: "Acme Corp"
+                      created_at: "2025-08-01T10:00:00Z"
+    post:
+      tags: [Tenants]
+      operationId: create-tenant
+      summary: Create tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantCreate"
+            examples:
+              sample:
+                value:
+                  name: "NewCo"
+      responses:
+        "201":
+          description: Created
+          headers:
+            API-Version:
+              $ref: "#/components/headers/API-Version"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+              examples:
+                created:
+                  value:
+                    id: "ten_456"
+                    name: "NewCo"
+                    created_at: "2025-09-01T10:00:00Z"
+  /tenants/{tenantId}:
+    get:
+      tags: [Tenants]
+      operationId: get-tenant
+      summary: Get tenant by id
+      parameters:
+        - $ref: "#/components/parameters/TenantId"
+      responses:
+        "200":
+          description: Tenant
+          headers:
+            API-Version:
+              $ref: "#/components/headers/API-Version"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+              examples:
+                sample:
+                  value:
+                    id: "ten_123"
+                    name: "Acme Corp"
+                    created_at: "2025-08-01T10:00:00Z"
+  /users:
+    get:
+      tags: [Users]
+      operationId: list-users
+      summary: List users in current tenant
+      parameters:
+        - $ref: "#/components/parameters/Accept-Version"
+        - $ref: "#/components/parameters/TenantHeader"
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+              examples:
+                sample:
+                  value:
+                    - id: "usr_1"
+                      email: "eng@example.com"
+                      roles: ["engineer"]
+                      created_at: "2025-08-10T12:00:00Z"
+    post:
+      tags: [Users]
+      operationId: create-user
+      summary: Invite/create user in current tenant
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+            examples:
+              sample:
+                value:
+                  email: "pm@example.com"
+                  roles: ["project_manager"]
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+              examples:
+                created:
+                  value:
+                    id: "usr_2"
+                    email: "pm@example.com"
+                    roles: ["project_manager"]
+                    created_at: "2025-09-01T15:10:00Z"
+  /projects:
+    get:
+      tags: [Projects]
+      operationId: list-projects
+      summary: List projects for tenant
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      responses:
+        "200":
+          description: Projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+              examples:
+                sample:
+                  value:
+                    - id: "prj_001"
+                      name: "Solar Site A"
+                      phase: "design"
+                      created_at: "2025-08-20T09:00:00Z"
+    post:
+      tags: [Projects]
+      operationId: create-project
+      summary: Create project
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectCreate"
+            examples:
+              sample:
+                value:
+                  name: "New PV Plant"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+              examples:
+                created:
+                  value:
+                    id: "prj_002"
+                    name: "New PV Plant"
+                    phase: "design"
+                    created_at: "2025-09-02T09:00:00Z"
+  /odl/docs:
+    post:
+      tags: [ODL]
+      operationId: create-odl-doc
+      summary: Create an ODL‑SD document (v4.1) for a project
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProjectIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OdlDocument"
+            examples:
+              minimal:
+                value:
+                  $schema: "https://odl-sd.org/schemas/v4.1/document.json"
+                  schema_version: "4.1"
+                  meta:
+                    project: "New PV Plant"
+                    domain: "PV"
+                  hierarchy: {}
+      responses:
+        "201":
+          description: Created ODL‑SD document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OdlDocument"
+              examples:
+                created:
+                  value:
+                    id: "odl_001"
+                    meta: { project: "New PV Plant", domain: "PV" }
+                    hierarchy: {}
+    get:
+      tags: [ODL]
+      operationId: list-odl-docs
+      summary: List ODL‑SD documents for a project
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/ProjectIdQuery"
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OdlDocSummary"
+              examples:
+                sample:
+                  value:
+                    - id: "odl_001"
+                      project_id: "prj_002"
+                      version: "1.0.0"
+                      created_at: "2025-09-02T09:05:00Z"
+  /odl/docs/{docId}:
+    get:
+      tags: [ODL]
+      operationId: get-odl-doc
+      summary: Get an ODL‑SD document
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/DocId"
+      responses:
+        "200":
+          description: ODL‑SD document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OdlDocument"
+              examples:
+                sample:
+                  value:
+                    id: "odl_001"
+                    meta: { project: "New PV Plant", domain: "PV" }
+                    hierarchy: {}
+  /odl/docs/{docId}/patches:
+    post:
+      tags: [ODL]
+      operationId: apply-json-patch
+      summary: Apply a JSON‑Patch to the ODL‑SD document (safe write)
+      description: |
+        Applies a RFC 6902 JSON‑Patch atomically with audit metadata, tool version,
+        optional dry‑run, and optimistic concurrency using `doc_version`.
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+        - $ref: "#/components/parameters/DocId"
+      requestBody:
+        required: true
+        content:
+          application/json-patch+json:
+            schema:
+              $ref: "#/components/schemas/JsonPatch"
+            examples:
+              add-instance:
+                value:
+                  intent: "add_pv_string"
+                  tool_version: "auto_route@1.4.0"
+                  dry_run: false
+                  doc_version: "12"
+                  evidence:
+                    - "https://example.com/evidence/iv-curve.pdf"
+                  patch:
+                    - op: add
+                      path: "/instances/-"
+                      value: { id: "str-12", type_ref: "pv_string_450w" }
+      responses:
+        "200":
+          description: Patch applied
+          headers:
+            API-Version:
+              $ref: "#/components/headers/API-Version"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatchResult"
+              examples:
+                ok:
+                  value:
+                    applied: true
+                    new_version: "13"
+                    inverse_patch:
+                      - op: remove
+                        path: "/instances/-"
+        "409":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                conflict:
+                  value:
+                    error: version_conflict
+                    message: "Document version mismatch; rebase required."
+  /ai/tools/execute:
+    post:
+      tags: [AI Tools]
+      operationId: execute-tool
+      summary: Execute a registered AI tool with validated inputs
+      parameters:
+        - $ref: "#/components/parameters/TenantHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToolCallRequest"
+            examples:
+              datasheet-parse:
+                value:
+                  tool: "parse_datasheet_pdf@2.1.0"
+                  inputs:
+                    url: "https://cdn.example.com/datasheets/inverter.pdf"
+      responses:
+        "200":
+          description: Tool execution result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ToolResult"
+              examples:
+                ok:
+                  value:
+                    model_id: "gpt-4o-mini"
+                    model_version: "2025-05-12"
+                    confidence: 0.92
+                    output:
+                      fields_extracted: 42
+                      warnings: []
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /ai/agents/plan:
+    post:
+      tags: [AI Agents]
+      operationId: create-plan
+      summary: Create a high-level plan (Planner/Router)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanRequest"
+            examples:
+              design:
+                value:
+                  goal: "Draft a 5 kW PV design for CA with 2-day storage"
+                  constraints: ["budget<=20000"]
+      responses:
+        "200":
+          description: Plan created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanResponse"
+              examples:
+                sample:
+                  value:
+                    tasks:
+                      - id: "t1"
+                        title: "Gather requirements"
+                        status: "complete"
+                      - id: "t2"
+                        title: "Generate preliminary layout"
+                        status: "in_progress"
+                      - id: "t3"
+                        title: "Run wiring checks"
+                        status: "pending"
+  /ai/evals/runs:
+    post:
+      tags: [AI Evals]
+      operationId: start-eval-run
+      summary: Start an evaluation run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvalRunCreate"
+            examples:
+              quick:
+                value:
+                  name: "prompt-regression-2025-09-02"
+                  suite: "core"
+                  model_id: "gpt-4o-mini"
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvalRun"
+              examples:
+                accepted:
+                  value:
+                    id: "eval_001"
+                    status: "running"
+    get:
+      tags: [AI Evals]
+      operationId: list-eval-runs
+      summary: List evaluation runs
+      responses:
+        "200":
+          description: Eval runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EvalRun"
+              examples:
+                sample:
+                  value:
+                    - id: "eval_001"
+                      name: "prompt-regression-2025-09-02"
+                      status: "running"
+  /observability/traces:
+    get:
+      tags: [Observability]
+      operationId: get-traces
+      summary: Get distributed traces (filtered)
+      parameters:
+        - name: trace_id
+          in: query
+          schema: { type: string }
+        - name: user_id
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Traces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trace"
+              examples:
+                sample:
+                  value:
+                    - trace_id: "trc_abc"
+                      spans:
+                        - name: "execute-tool"
+                          duration_ms: 230
+                          attributes: { api.operation_id: "execute-tool", api.version: "2.3.1" }
+  /governance/adr:
+    get:
+      tags: [Governance]
+      operationId: list-adrs
+      summary: List ADRs
+      responses:
+        "200":
+          description: ADRs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ADR"
+              examples:
+                sample:
+                  value:
+                    - id: "ADR-0001"
+                      title: "Choose FastAPI for API gateway"
+                      status: "Accepted"
+  /governance/exceptions:
+    post:
+      tags: [Governance]
+      operationId: request-exception
+      summary: Request governance exception
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExceptionRequest"
+            examples:
+              example:
+                value:
+                  decision: "Allow temporary deviation from response example rule"
+                  justification: "Legacy endpoint parity for migration"
+                  expires_at: "2026-01-01T00:00:00Z"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExceptionRequest"
+              examples:
+                created:
+                  value:
+                    id: "exc_123"
+                    decision: "Allow temporary deviation from response example rule"
+                    status: "approved"
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.example.com/oauth2/authorize
+          tokenUrl: https://auth.example.com/oauth2/token
+          scopes:
+            openid: "OpenID Connect scope"
+            profile: "Read basic profile"
+            api: "Access API"
+        clientCredentials:
+          tokenUrl: https://auth.example.com/oauth2/token
+          scopes:
+            api: "Access API"
+    apiKey:
+      type: apiKey
+      description: Deprecated legacy API key (sunset per policy)
+      name: Authorization
+      in: header
+  headers:
+    API-Version:
+      description: "Semantic version of the API implementation"
+      schema:
+        type: string
+        pattern: "^[0-9]+\.[0-9]+\.[0-9]+$"
+    Deprecation:
+      description: "true if the endpoint is deprecated"
+      schema: { type: string }
+    Sunset:
+      description: "Date when the deprecated endpoint will be removed"
+      schema: { type: string, format: date-time }
+  parameters:
+    Accept-Version:
+      name: Accept-Version
+      in: header
+      required: false
+      description: "Request a specific semantic version (e.g., 2.3.1); defaults to latest GA of current major"
+      schema:
+        type: string
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema: { type: string }
+    TenantHeader:
+      name: X-Tenant-Id
+      in: header
+      required: true
+      description: "Tenant context for multi-tenant isolation"
+      schema: { type: string }
+    ProjectIdQuery:
+      name: project_id
+      in: query
+      required: true
+      schema: { type: string }
+    DocId:
+      name: docId
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          examples:
+            bad:
+              value:
+                error: "bad_request"
+                message: "Invalid payload"
+    ServiceUnavailable:
+      description: Service unavailable
+      content:
+        application/json:
+          examples:
+            svcdown:
+              value:
+                error: "unavailable"
+                message: "Downstream dependency not ready"
+  schemas:
+    Tenant:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+      required: [id, name]
+    TenantCreate:
+      type: object
+      properties:
+        name: { type: string }
+      required: [name]
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        roles:
+          type: array
+          items: { type: string }
+        created_at: { type: string, format: date-time }
+      required: [id, email, roles]
+    UserCreate:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        roles:
+          type: array
+          items:
+            type: string
+            description: "Role name per RBAC policy (e.g., engineer, project_manager, compliance_officer)"
+      required: [email]
+    Project:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        phase: { type: string, enum: [design, procurement, construction, commissioning, operations, decommissioning] }
+        created_at: { type: string, format: date-time }
+      required: [id, name]
+    ProjectCreate:
+      type: object
+      properties:
+        name: { type: string }
+      required: [name]
+    OdlDocSummary:
+      type: object
+      properties:
+        id: { type: string }
+        project_id: { type: string }
+        version: { type: string }
+        created_at: { type: string, format: date-time }
+      required: [id, project_id, version]
+    OdlDocument:
+      type: object
+      description: "Simplified envelope for ODL‑SD v4.1 document (see canonical schema for full definition)"
+      properties:
+        id: { type: string }
+        $schema: { type: string }
+        schema_version: { type: string }
+        meta:
+          type: object
+          additionalProperties: true
+        hierarchy:
+          type: object
+          additionalProperties: true
+        requirements:
+          type: object
+          additionalProperties: true
+        libraries:
+          type: object
+          additionalProperties: true
+        instances:
+          type: array
+          items: { type: object }
+        connections:
+          type: array
+          items: { type: object }
+        finance:
+          type: object
+          additionalProperties: true
+        governance:
+          type: object
+          additionalProperties: true
+      required: [schema_version, meta, hierarchy]
+    JsonPatch:
+      type: object
+      properties:
+        intent: { type: string }
+        tool_version: { type: string }
+        dry_run: { type: boolean }
+        doc_version: { type: string }
+        evidence:
+          type: array
+          items: { type: string, format: uri }
+        patch:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: object
+            properties:
+              op: { type: string, enum: [add, remove, replace, move, copy, test] }
+              path: { type: string }
+              value: {}
+              from: { type: string }
+            required: [op, path]
+      required: [patch]
+    PatchResult:
+      type: object
+      properties:
+        applied: { type: boolean }
+        new_version: { type: string }
+        inverse_patch:
+          type: array
+          items:
+            type: object
+            properties:
+              op: { type: string }
+              path: { type: string }
+              value: {}
+    ToolCallRequest:
+      type: object
+      properties:
+        tool:
+          type: string
+          description: "Name@semver of tool in registry (e.g., parse_datasheet_pdf@2.1.0)"
+        inputs:
+          type: object
+          additionalProperties: true
+      required: [tool, inputs]
+    ToolResult:
+      type: object
+      description: "AI tool response with required AI metadata"
+      properties:
+        model_id: { type: string }
+        model_version: { type: string }
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        output:
+          type: object
+          additionalProperties: true
+      required: [model_id, model_version, confidence, output]
+    PlanRequest:
+      type: object
+      properties:
+        goal: { type: string }
+        constraints:
+          type: array
+          items: { type: string }
+      required: [goal]
+    PlanTask:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        status: { type: string, enum: [pending, in_progress, complete, blocked] }
+      required: [id, title, status]
+    PlanResponse:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlanTask"
+      required: [tasks]
+    EvalRunCreate:
+      type: object
+      properties:
+        name: { type: string }
+        suite: { type: string }
+        model_id: { type: string }
+      required: [name, suite, model_id]
+    EvalRun:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [queued, running, passed, failed] }
+      required: [id, name, status]
+    Trace:
+      type: object
+      properties:
+        trace_id: { type: string }
+        spans:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              start: { type: string, format: date-time }
+              duration_ms: { type: number }
+              attributes:
+                type: object
+                additionalProperties: true
+    ADR:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        status: { type: string }
+      required: [id, title, status]
+    ExceptionRequest:
+      type: object
+      properties:
+        id: { type: string }
+        decision: { type: string }
+        justification: { type: string }
+        status: { type: string, enum: [pending, approved, rejected, expired] }
+        expires_at: { type: string, format: date-time }
+      required: [decision]
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        message: { type: string }

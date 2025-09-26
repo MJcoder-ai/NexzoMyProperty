@@ -1,0 +1,36 @@
+﻿name: API Clients
+
+on:
+  push:
+    paths:
+      - "docs/03-apis/openapi.yaml"
+      - "docs/03-apis/asyncapi.yaml"
+      - "packages/sdk/**"
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Generate REST SDK
+        run: pnpm --filter packages/sdk run generate:rest
+      - name: Generate Async SDK
+        run: pnpm --filter packages/sdk run generate:async
+      - name: Lint SDK
+        run: pnpm --filter packages/sdk run lint
+      - name: Publish (dry run)
+        if: github.ref != 'refs/heads/main'
+        run: pnpm --filter packages/sdk run publish -- --dry-run
+      - name: Publish (main)
+        if: github.ref == 'refs/heads/main'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm --filter packages/sdk run publish

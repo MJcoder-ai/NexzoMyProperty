@@ -1,0 +1,637 @@
+asyncapi: '2.6.0'
+info:
+  title: OriginFlow Event API
+  version: 1.0.0
+  description: |
+    Event contracts for webhook-style and stream-based integrations across payments,
+    governance (ODL‑SD), logistics (EPCIS-style), and AI/agent telemetry.
+
+    **Multi-tenant** and **multi-domain** ready — all messages carry tenant context,
+    correlation/trace IDs, and are signed via HMAC for webhook delivery.
+    JWT bearer tokens are supported where receivers pull from streams.
+
+    **Lifecycle & Governance:** Versioning follows the platform Versioning Policy;
+    breaking changes trigger a **major** bump and a 12‑month deprecation window for
+    the previous major. Deprecation headers are mirrored as channel metadata where applicable.
+
+  termsOfService: https://example.com/terms
+  contact:
+    name: API Team
+    email: api@example.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+defaultContentType: application/json
+
+tags:
+  - name: payments
+    description: Billing, payouts, escrow and disputes
+  - name: governance
+    description: ODL‑SD governance events (publish, change requests)
+  - name: logistics
+    description: EPCIS-style shipment and installation traceability
+  - name: ai
+    description: AI agent/tool telemetry & evaluations
+
+servers:
+  production:
+    url: https://webhooks.originfd.com/events
+    protocol: https
+    description: Webhook delivery to your HTTPS endpoint
+    security:
+      - webhookHmac: []
+  staging:
+    url: https://staging-webhooks.originfd.com/events
+    protocol: https
+    description: Staging webhooks for testing
+    security:
+      - webhookHmac: []
+
+security:
+  - webhookHmac: []
+
+channels:
+
+  # -------------------- PAYMENTS & COMMERCIAL --------------------
+  payment.succeeded:
+    description: Emitted when a payment is captured successfully.
+    publish:
+      operationId: emitPaymentSucceeded
+      summary: Payment captured
+      tags: [{ name: payments }]
+      message:
+        $ref: '#/components/messages/PaymentSucceeded'
+
+  payment.failed:
+    description: Emitted when a payment attempt fails.
+    publish:
+      operationId: emitPaymentFailed
+      summary: Payment failed
+      tags: [{ name: payments }]
+      message:
+        $ref: '#/components/messages/PaymentFailed'
+
+  refund.succeeded:
+    description: Emitted when a refund is completed.
+    publish:
+      operationId: emitRefundSucceeded
+      tags: [{ name: payments }]
+      message:
+        $ref: '#/components/messages/RefundSucceeded'
+
+  dispute.opened:
+    description: Emitted when a dispute/chargeback is opened.
+    publish:
+      operationId: emitDisputeOpened
+      tags: [{ name: payments }]
+      message:
+        $ref: '#/components/messages/DisputeOpened'
+
+  dispute.closed:
+    description: Emitted when a dispute closes (won/lost).
+    publish:
+      operationId: emitDisputeClosed
+      tags: [{ name: payments }]
+      message:
+        $ref: '#/components/messages/DisputeClosed'
+
+  escrow.opened:
+    description: Emitted when an escrow is created for an order.
+    publish:
+      operationId: emitEscrowOpened
+      tags: [{ name: payments }]
+      message:
+        $ref: '#/components/messages/EscrowOpened'
+
+  escrow.released:
+    description: Emitted when escrow funds are released at a milestone (e.g., commissioning).
+    publish:
+      operationId: emitEscrowReleased
+      tags: [{ name: payments }]
+      message:
+        $ref: '#/components/messages/EscrowReleased'
+
+  escrow.disputed:
+    description: Emitted when an escrow enters dispute and releases are paused.
+    publish:
+      operationId: emitEscrowDisputed
+      tags: [{ name: payments }]
+      message:
+        $ref: '#/components/messages/EscrowDisputed'
+
+  payout.queued:
+    description: Emitted when a payout is queued to a counterparty.
+    publish:
+      operationId: emitPayoutQueued
+      tags: [{ name: payments }]
+      message:
+        $ref: '#/components/messages/PayoutQueued'
+
+  payout.paid:
+    description: Emitted when a payout is executed.
+    publish:
+      operationId: emitPayoutPaid
+      tags: [{ name: payments }]
+      message:
+        $ref: '#/components/messages/PayoutPaid'
+
+  # -------------------- GOVERNANCE & ODL‑SD --------------------
+  governance.design.published:
+    description: Emitted when an ODL‑SD document baseline is published (signed).
+    publish:
+      operationId: emitDesignPublished
+      summary: ODL‑SD baseline published
+      tags: [{ name: governance }]
+      message:
+        $ref: '#/components/messages/DesignPublished'
+
+  governance.change_request.opened:
+    description: Emitted when a change request is opened against an ODL‑SD baseline.
+    publish:
+      operationId: emitChangeRequestOpened
+      tags: [{ name: governance }]
+      message:
+        $ref: '#/components/messages/ChangeRequestOpened'
+
+  governance.change_request.merged:
+    description: Emitted when a change request is approved and merged.
+    publish:
+      operationId: emitChangeRequestMerged
+      tags: [{ name: governance }]
+      message:
+        $ref: '#/components/messages/ChangeRequestMerged'
+
+  # -------------------- LOGISTICS / EPCIS --------------------
+  logistics.shipment.event:
+    description: Generic EPCIS-style event (Object/Transformation/Aggregation) for shipments.
+    publish:
+      operationId: emitShipmentEvent
+      tags: [{ name: logistics }]
+      message:
+        $ref: '#/components/messages/EpcisShipmentEvent'
+
+  logistics.arrival:
+    description: Convenience channel for common arrival events (site/warehouse).
+    publish:
+      operationId: emitLogisticsArrival
+      tags: [{ name: logistics }]
+      message:
+        $ref: '#/components/messages/LogisticsArrival'
+
+  logistics.departure:
+    description: Convenience channel for departure events.
+    publish:
+      operationId: emitLogisticsDeparture
+      tags: [{ name: logistics }]
+      message:
+        $ref: '#/components/messages/LogisticsDeparture'
+
+  # -------------------- AI / AGENTS --------------------
+  ai.tool.executed:
+    description: Telemetry for deterministic tool calls invoked by agents (cost/latency/trace).
+    publish:
+      operationId: emitAiToolExecuted
+      tags: [{ name: ai }]
+      message:
+        $ref: '#/components/messages/AiToolExecuted'
+
+  ai.agent.handover:
+    description: Context handover between agents in a plan (planner → specialist).
+    publish:
+      operationId: emitAiAgentHandover
+      tags: [{ name: ai }]
+      message:
+        $ref: '#/components/messages/AgentHandover'
+
+components:
+
+  securitySchemes:
+    webhookHmac:
+      type: apiKey
+      in: header
+      name: X-Signature
+      description: |
+        HMAC-SHA256 signature of the raw request body using your shared secret.
+        Include `X-Timestamp` (RFC3339) to prevent replay; receivers MUST reject
+        requests if `abs(now - X-Timestamp) > 5m` or if signature mismatch.
+
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  messageTraits:
+    CorrelatedMessage:
+      correlationId:
+        description: Correlates related events and tool calls across services.
+        location: "$message.header#/X-Correlation-ID"
+
+  schemas:
+
+    # ---------- Common ----------
+    TenantContext:
+      type: object
+      required: [tenant_id]
+      properties:
+        tenant_id: { type: string, description: "ULID/UUID of tenant/org" }
+        org_id: { type: string }
+        project_id: { type: string }
+        user_id: { type: string }
+        role: { type: string }
+
+    Money:
+      type: object
+      required: [amount_minor, currency]
+      properties:
+        amount_minor: { type: integer, minimum: 0, description: "Amount in minor units" }
+        currency: { type: string, pattern: "^[A-Z]{3}$" }
+
+    AuditRef:
+      type: object
+      required: [at, by]
+      properties:
+        at: { type: string, format: date-time }
+        by: { type: string, description: "User or service id" }
+        trace_id: { type: string }
+
+    OdlDocumentRef:
+      type: object
+      required: [doc_id, version, content_hash]
+      properties:
+        doc_id: { type: string }
+        version: { type: string, description: "SemVer for content version" }
+        content_hash: { type: string, description: "sha256:..." }
+
+    PaymentBase:
+      type: object
+      required: [payment_id, amount, method]
+      properties:
+        payment_id: { type: string }
+        customer_id: { type: string }
+        subscription_id: { type: string }
+        order_id: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+        method: { type: string, enum: ["card", "ach", "sepa", "bank_transfer", "usdc"] }
+        metadata: { type: object, additionalProperties: true }
+
+    DisputeInfo:
+      type: object
+      properties:
+        reason: { type: string }
+        status: { type: string, enum: ["open","won","lost","closed"] }
+        amount_disputed: { $ref: '#/components/schemas/Money' }
+
+    EscrowInfo:
+      type: object
+      required: [escrow_id, status]
+      properties:
+        escrow_id: { type: string }
+        status: { type: string, enum: ["opened","released","disputed"] }
+        milestone: { type: string, description: "e.g., commissioning_started" }
+        order_id: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+
+    PayoutInfo:
+      type: object
+      required: [payout_id, counterparty_id, amount, status]
+      properties:
+        payout_id: { type: string }
+        counterparty_id: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+        status: { type: string, enum: ["queued","paid","failed"] }
+        method: { type: string, enum: ["bank_transfer","wallet","check"] }
+
+    EpcisCore:
+      type: object
+      required: [event_type, event_time, read_point]
+      properties:
+        event_type: { type: string, enum: ["ObjectEvent","AggregationEvent","TransformationEvent"] }
+        event_time: { type: string, format: date-time }
+        read_point: { type: string, description: "GLN/geo/warehouse/site id" }
+        epc_list:
+          type: array
+          items: { type: string }
+        biz_step: { type: string, description: "e.g., shipping, receiving" }
+        disposition: { type: string, description: "e.g., in_transit, in_progress" }
+        shipment_id: { type: string }
+        evidence:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string, enum: ["photo","document","signature"] }
+              url: { type: string, format: uri }
+
+    AiToolExec:
+      type: object
+      required: [agent_id, tool_name, tool_version, status, started_at, duration_ms]
+      properties:
+        agent_id: { type: string }
+        tool_name: { type: string }
+        tool_version: { type: string }
+        status: { type: string, enum: ["ok","error","timeout"] }
+        started_at: { type: string, format: date-time }
+        duration_ms: { type: integer, minimum: 0 }
+        cost_usd: { type: number, minimum: 0 }
+        model_id: { type: string }
+        model_version: { type: string }
+        inputs_bytes: { type: integer, minimum: 0 }
+        outputs_bytes: { type: integer, minimum: 0 }
+        trace_id: { type: string }
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+
+    AgentHandoverRecord:
+      type: object
+      required: [from_agent, to_agent, at]
+      properties:
+        from_agent: { type: string }
+        to_agent: { type: string }
+        at: { type: string, format: date-time }
+        context:
+          type: object
+          additionalProperties: true
+        plan_progress:
+          type: object
+          properties:
+            step_id: { type: string }
+            status: { type: string, enum: ["pending","in_progress","complete","blocked"] }
+
+    ChangeRequestRef:
+      type: object
+      required: [cr_id, status]
+      properties:
+        cr_id: { type: string }
+        status: { type: string, enum: ["opened","approved","merged","rejected"] }
+        title: { type: string }
+        inverse_patch_uri: { type: string, format: uri }
+
+    # ---------- Headers ----------
+    StandardHeaders:
+      type: object
+      additionalProperties: false
+      properties:
+        X-Request-ID: { type: string }
+        X-Correlation-ID: { type: string }
+        X-B3-TraceId: { type: string }
+        X-B3-SpanId: { type: string }
+        X-B3-Sampled: { type: string }
+        X-Tenant-Id: { type: string }
+        API-Version: { type: string }
+        X-Signature: { type: string, description: "HMAC-SHA256 signature" }
+        X-Timestamp: { type: string, description: "RFC3339 time used for signature" }
+
+  messages:
+
+    # ---------- Payments ----------
+    PaymentSucceeded:
+      name: payment.succeeded
+      title: Payment Succeeded
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, payment]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              payment: { $ref: '#/components/schemas/PaymentBase' }
+
+    PaymentFailed:
+      name: payment.failed
+      title: Payment Failed
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, payment, error]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              payment: { $ref: '#/components/schemas/PaymentBase' }
+              error:
+                type: object
+                properties:
+                  code: { type: string }
+                  message: { type: string }
+
+    RefundSucceeded:
+      name: refund.succeeded
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, refund_id, payment_id, amount]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              refund_id: { type: string }
+              payment_id: { type: string }
+              amount: { $ref: '#/components/schemas/Money' }
+
+    DisputeOpened:
+      name: dispute.opened
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, payment_id, dispute]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              payment_id: { type: string }
+              dispute: { $ref: '#/components/schemas/DisputeInfo' }
+
+    DisputeClosed:
+      name: dispute.closed
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, payment_id, dispute]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              payment_id: { type: string }
+              dispute: { $ref: '#/components/schemas/DisputeInfo' }
+
+    EscrowOpened:
+      name: escrow.opened
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, escrow]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              escrow: { $ref: '#/components/schemas/EscrowInfo' }
+
+    EscrowReleased:
+      name: escrow.released
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, escrow]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              escrow: { $ref: '#/components/schemas/EscrowInfo' }
+
+    EscrowDisputed:
+      name: escrow.disputed
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, escrow]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              escrow: { $ref: '#/components/schemas/EscrowInfo' }
+
+    PayoutQueued:
+      name: payout.queued
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, payout]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              payout: { $ref: '#/components/schemas/PayoutInfo' }
+
+    PayoutPaid:
+      name: payout.paid
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, payout]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              payout: { $ref: '#/components/schemas/PayoutInfo' }
+
+    # ---------- Governance / ODL‑SD ----------
+    DesignPublished:
+      name: governance.design.published
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, document, audit]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              document: { $ref: '#/components/schemas/OdlDocumentRef' }
+              audit: { $ref: '#/components/schemas/AuditRef' }
+
+    ChangeRequestOpened:
+      name: governance.change_request.opened
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, document, change_request]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              document: { $ref: '#/components/schemas/OdlDocumentRef' }
+              change_request: { $ref: '#/components/schemas/ChangeRequestRef' }
+
+    ChangeRequestMerged:
+      name: governance.change_request.merged
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - type: object
+            required: [event_id, occurred_at, document, change_request, audit]
+            properties:
+              event_id: { type: string }
+              occurred_at: { type: string, format: date-time }
+              document: { $ref: '#/components/schemas/OdlDocumentRef' }
+              change_request: { $ref: '#/components/schemas/ChangeRequestRef' }
+              audit: { $ref: '#/components/schemas/AuditRef' }
+
+    # ---------- Logistics / EPCIS ----------
+    EpcisShipmentEvent:
+      name: logistics.shipment.event
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - $ref: '#/components/schemas/EpcisCore'
+
+    LogisticsArrival:
+      name: logistics.arrival
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - $ref: '#/components/schemas/EpcisCore'
+
+    LogisticsDeparture:
+      name: logistics.departure
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - $ref: '#/components/schemas/EpcisCore'
+
+    # ---------- AI / Agents ----------
+    AiToolExecuted:
+      name: ai.tool.executed
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - $ref: '#/components/schemas/AiToolExec'
+
+    AgentHandover:
+      name: ai.agent.handover
+      headers: { $ref: '#/components/schemas/StandardHeaders' }
+      traits: [ { $ref: '#/components/messageTraits/CorrelatedMessage' } ]
+      payload:
+        allOf:
+          - $ref: '#/components/schemas/TenantContext'
+          - $ref: '#/components/schemas/AgentHandoverRecord'
+
+externalDocs:
+  description: OpenAPI for synchronous APIs
+  url: ../openapi.yaml

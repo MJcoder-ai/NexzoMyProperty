@@ -1,0 +1,233 @@
+﻿asyncapi: 2.6.0
+info:
+  title: Nexzo MyProperty Event Streams
+  version: 1.0.0
+  description: Pub/Sub topics supporting telemetry ingestion, billing lifecycle, service operations, and OriginFD integration.
+servers:
+  gcp:
+    url: pubsub.googleapis.com/projects/nexzo-myproperty-{env}/topics
+    protocol: googlepubsub
+    description: Google Cloud Pub/Sub topics
+defaultContentType: application/json
+channels:
+  meter.reading.ingested:
+    subscribe:
+      summary: Meter readings normalised and accepted
+      message:
+        $ref: '#/components/messages/MeterReadingIngested'
+  billing.invoice.finalized:
+    publish:
+      summary: Invoice finalised and ready for delivery
+      message:
+        $ref: '#/components/messages/InvoiceFinalized'
+  billing.payment.settled:
+    publish:
+      summary: Payment confirmed via Stripe
+      message:
+        $ref: '#/components/messages/PaymentSettled'
+  service.ticket.updated:
+    publish:
+      summary: Service ticket status changed
+      message:
+        $ref: '#/components/messages/ServiceTicketUpdated'
+  originfd.project.sync:
+    subscribe:
+      summary: OriginFD project lifecycle updates
+      message:
+        $ref: '#/components/messages/OriginFdProjectSync'
+  ai.agent.audit:
+    publish:
+      summary: Record of actions executed by AI agents
+      message:
+        $ref: '#/components/messages/AiAgentAudit'
+components:
+  messages:
+    MeterReadingIngested:
+      name: MeterReadingIngested
+      title: Meter reading ingested
+      payload:
+        $ref: '#/components/schemas/MeterReadingEvent'
+    InvoiceFinalized:
+      name: InvoiceFinalized
+      payload:
+        $ref: '#/components/schemas/InvoiceEvent'
+    PaymentSettled:
+      name: PaymentSettled
+      payload:
+        $ref: '#/components/schemas/PaymentEvent'
+    ServiceTicketUpdated:
+      name: ServiceTicketUpdated
+      payload:
+        $ref: '#/components/schemas/ServiceTicketEvent'
+    OriginFdProjectSync:
+      name: OriginFdProjectSync
+      payload:
+        $ref: '#/components/schemas/OriginFdEvent'
+    AiAgentAudit:
+      name: AiAgentAudit
+      payload:
+        $ref: '#/components/schemas/AiAgentAudit'
+  schemas:
+    MeterReadingEvent:
+      type: object
+      required: [eventId, tenantId, meterId, propertyId, readings]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        propertyId:
+          type: string
+          format: uuid
+        meterId:
+          type: string
+          format: uuid
+        readings:
+          type: array
+          items:
+            type: object
+            required: [timestamp, valueKwh, quality]
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              valueKwh:
+                type: number
+                format: float
+              quality:
+                type: string
+                enum: [actual, estimated]
+        ingestionJobId:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+    InvoiceEvent:
+      type: object
+      required: [eventId, invoiceId, tenantId, status]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        invoiceId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        propertyId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [finalized]
+        billingPeriod:
+          type: string
+        totalAmount:
+          type: number
+          format: float
+        currency:
+          type: string
+        issuedAt:
+          type: string
+          format: date-time
+    PaymentEvent:
+      type: object
+      required: [eventId, invoiceId, paymentId, status]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        invoiceId:
+          type: string
+          format: uuid
+        paymentId:
+          type: string
+        status:
+          type: string
+          enum: [succeeded, failed, requires_action]
+        amount:
+          type: number
+          format: float
+        currency:
+          type: string
+        processedAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+    ServiceTicketEvent:
+      type: object
+      required: [eventId, ticketId, status, tenantId]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        ticketId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        propertyId:
+          type: string
+          format: uuid
+        status:
+          type: string
+        previousStatus:
+          type: string
+          nullable: true
+        updatedBy:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+    OriginFdEvent:
+      type: object
+      required: [eventId, projectId, status]
+      properties:
+        eventId:
+          type: string
+        projectId:
+          type: string
+        status:
+          type: string
+        scope:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        updatedAt:
+          type: string
+          format: date-time
+    AiAgentAudit:
+      type: object
+      required: [eventId, agentId, toolName, outcome]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        agentId:
+          type: string
+        tenantId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+        toolName:
+          type: string
+        outcome:
+          type: string
+          enum: [success, denied, error]
+        latencyMs:
+          type: integer
+        traceId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true

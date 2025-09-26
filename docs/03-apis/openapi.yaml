@@ -1,0 +1,690 @@
+﻿openapi: 3.1.0
+info:
+  title: Nexzo MyProperty API
+  version: 1.0.0
+  description: >-
+    REST API for Nexzo MyProperty covering tenants, properties, energy allocation,
+    billing, service requests, and OriginFD project integrations.
+servers:
+  - url: https://api.nexzo.com/myproperty
+    description: Production
+  - url: https://staging.api.nexzo.com/myproperty
+    description: Staging
+security:
+  - bearerAuth: []
+  - ApiKeyAuth: []
+tags:
+  - name: Tenants
+  - name: Properties
+  - name: Energy
+  - name: Billing
+  - name: Service
+  - name: Projects
+paths:
+  /v1/tenants:
+    post:
+      tags: [Tenants]
+      summary: Create tenant organisation
+      operationId: createTenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantCreateRequest'
+      responses:
+        '201':
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '409':
+          description: Tenant already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/tenants/{tenantId}:
+    get:
+      tags: [Tenants]
+      summary: Get tenant details
+      operationId: getTenant
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: Tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '404':
+          description: Tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/properties:
+    get:
+      tags: [Properties]
+      summary: List properties for current tenant
+      operationId: listProperties
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Collection of properties
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropertyCollection'
+    post:
+      tags: [Properties]
+      summary: Create property
+      operationId: createProperty
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropertyCreateRequest'
+      responses:
+        '201':
+          description: Property created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Property'
+  /v1/properties/{propertyId}/units:
+    post:
+      tags: [Properties]
+      summary: Create unit within property
+      operationId: createUnit
+      parameters:
+        - $ref: '#/components/parameters/PropertyId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnitCreateRequest'
+      responses:
+        '201':
+          description: Unit created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unit'
+  /v1/meters/{meterId}/readings:
+    post:
+      tags: [Energy]
+      summary: Submit meter readings
+      operationId: submitMeterReadings
+      parameters:
+        - name: meterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeterReadingBatch'
+      responses:
+        '202':
+          description: Readings accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponse'
+  /v1/allocations:
+    get:
+      tags: [Energy]
+      summary: Retrieve solar allocation ledger entries
+      operationId: listAllocations
+      parameters:
+        - name: propertyId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: billingPeriod
+          in: query
+          schema:
+            type: string
+            example: 2025-09
+      responses:
+        '200':
+          description: Allocation entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllocationCollection'
+  /v1/invoices:
+    post:
+      tags: [Billing]
+      summary: Create invoice draft
+      operationId: createInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateRequest'
+      responses:
+        '201':
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invoice'
+    get:
+      tags: [Billing]
+      summary: List invoices
+      operationId: listInvoices
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/InvoiceStatus'
+      responses:
+        '200':
+          description: Invoice collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceCollection'
+  /v1/tickets:
+    post:
+      tags: [Service]
+      summary: Create service ticket
+      operationId: createTicket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketCreateRequest'
+      responses:
+        '201':
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+  /v1/projects:
+    post:
+      tags: [Projects]
+      summary: Create OriginFD project link
+      operationId: createProjectLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectLinkCreateRequest'
+      responses:
+        '201':
+          description: Link created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectLink'
+  /v1/webhooks/originfd:
+    post:
+      tags: [Projects]
+      summary: Receive OriginFD project events
+      operationId: handleOriginFdWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OriginFdEvent'
+      responses:
+        '202':
+          description: Event accepted
+  /v1/webhooks/stripe:
+    post:
+      tags: [Billing]
+      summary: Stripe webhook handler
+      operationId: handleStripeWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Acknowledged
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      name: X-Api-Key
+      in: header
+  parameters:
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PropertyId:
+      name: propertyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  schemas:
+    TenantCreateRequest:
+      type: object
+      required: [name, primaryContact]
+      properties:
+        name:
+          type: string
+        primaryContact:
+          $ref: '#/components/schemas/UserInput'
+        region:
+          type: string
+          description: ISO-3166 country code
+        metadata:
+          type: object
+          additionalProperties: true
+    Tenant:
+      allOf:
+        - $ref: '#/components/schemas/TenantCreateRequest'
+        - type: object
+          required: [id, createdAt]
+          properties:
+            id:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    UserInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+    PropertyCreateRequest:
+      type: object
+      required: [name, address]
+      properties:
+        name:
+          type: string
+        address:
+          $ref: '#/components/schemas/Address'
+        timezone:
+          type: string
+        utilityAccountNumber:
+          type: string
+        solarCapacityKw:
+          type: number
+          format: float
+        metadata:
+          type: object
+          additionalProperties: true
+    Property:
+      allOf:
+        - $ref: '#/components/schemas/PropertyCreateRequest'
+        - type: object
+          required: [id, tenantId]
+          properties:
+            id:
+              type: string
+              format: uuid
+            tenantId:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+    PropertyCollection:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Property'
+        nextCursor:
+          type: string
+          nullable: true
+    UnitCreateRequest:
+      type: object
+      required: [label]
+      properties:
+        label:
+          type: string
+        tenantUserId:
+          type: string
+          format: uuid
+          nullable: true
+        meterId:
+          type: string
+          format: uuid
+          nullable: true
+    Unit:
+      allOf:
+        - $ref: '#/components/schemas/UnitCreateRequest'
+        - type: object
+          required: [id, propertyId]
+          properties:
+            id:
+              type: string
+              format: uuid
+            propertyId:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+    MeterReadingBatch:
+      type: object
+      required: [readings]
+      properties:
+        readings:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeterReading'
+    MeterReading:
+      type: object
+      required: [timestamp, valueKwh]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        valueKwh:
+          type: number
+          format: float
+        quality:
+          type: string
+          enum: [actual, estimated]
+          default: actual
+    SubmissionResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+        status:
+          type: string
+          enum: [accepted]
+    AllocationCollection:
+      type: object
+      properties:
+        propertyId:
+          type: string
+          format: uuid
+        billingPeriod:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AllocationEntry'
+    AllocationEntry:
+      type: object
+      required: [unitId, solarKwh, gridKwh]
+      properties:
+        unitId:
+          type: string
+          format: uuid
+        solarKwh:
+          type: number
+          format: float
+        gridKwh:
+          type: number
+          format: float
+        adjustments:
+          type: array
+          items:
+            $ref: '#/components/schemas/AllocationAdjustment'
+    AllocationAdjustment:
+      type: object
+      properties:
+        reason:
+          type: string
+        deltaKwh:
+          type: number
+          format: float
+        adjustedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    InvoiceCreateRequest:
+      type: object
+      required: [tenantUserId, billingPeriod, lineItems]
+      properties:
+        tenantUserId:
+          type: string
+          format: uuid
+        billingPeriod:
+          type: string
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceLineItem'
+        metadata:
+          type: object
+          additionalProperties: true
+    Invoice:
+      allOf:
+        - $ref: '#/components/schemas/InvoiceCreateRequest'
+        - type: object
+          required: [id, status, totalAmount]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              $ref: '#/components/schemas/InvoiceStatus'
+            totalAmount:
+              type: number
+              format: float
+            currency:
+              type: string
+              default: USD
+            issuedAt:
+              type: string
+              format: date-time
+            dueAt:
+              type: string
+              format: date-time
+    InvoiceCollection:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invoice'
+        nextCursor:
+          type: string
+          nullable: true
+    InvoiceLineItem:
+      type: object
+      required: [description, amount]
+      properties:
+        description:
+          type: string
+        amount:
+          type: number
+          format: float
+        category:
+          type: string
+          enum: [solar, grid, fee, tax, credit, adjustment]
+    InvoiceStatus:
+      type: string
+      enum: [draft, pending, sent, paid, overdue, void]
+    TicketCreateRequest:
+      type: object
+      required: [propertyId, summary]
+      properties:
+        propertyId:
+          type: string
+          format: uuid
+        unitId:
+          type: string
+          format: uuid
+          nullable: true
+        summary:
+          type: string
+        description:
+          type: string
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+    Ticket:
+      allOf:
+        - $ref: '#/components/schemas/TicketCreateRequest'
+        - type: object
+          required: [id, status]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [new, triaged, quoted, scheduled, in_progress, completed, verified, closed]
+            priority:
+              type: string
+              enum: [low, medium, high]
+              default: medium
+            createdAt:
+              type: string
+              format: date-time
+    Attachment:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        label:
+          type: string
+    ProjectLinkCreateRequest:
+      type: object
+      required: [propertyId, projectType]
+      properties:
+        propertyId:
+          type: string
+          format: uuid
+        projectType:
+          type: string
+          enum: [solar_installation, retrofit, storage, hvac, other]
+        originFdProjectId:
+          type: string
+          nullable: true
+        notes:
+          type: string
+    ProjectLink:
+      allOf:
+        - $ref: '#/components/schemas/ProjectLinkCreateRequest'
+        - type: object
+          required: [id, status]
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum: [requested, in_progress, completed, canceled]
+            originFdProjectId:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+    OriginFdEvent:
+      type: object
+      required: [eventType, projectId]
+      properties:
+        eventType:
+          type: string
+        projectId:
+          type: string
+        status:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+    SubmissionStatus:
+      type: string
+      enum: [accepted]
+    Address:
+      type: object
+      properties:
+        line1:
+          type: string
+        line2:
+          type: string
+          nullable: true
+        city:
+          type: string
+        state:
+          type: string
+        postalCode:
+          type: string
+        country:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+            traceId:
+              type: string

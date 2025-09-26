@@ -1,0 +1,7 @@
+﻿packages:
+  - "apps/*"
+  - "services/*"
+  - "workers/*"
+  - "packages/*"
+  - "docs-site"
+  - "platform/*"

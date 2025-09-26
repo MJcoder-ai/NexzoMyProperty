@@ -1,0 +1,21 @@
+﻿{
+  "name": "nexzo-myproperty",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "scripts": {
+    "dev": "pnpm turbo run dev",
+    "build": "pnpm turbo run build",
+    "lint": "pnpm turbo run lint",
+    "test": "pnpm turbo run test",
+    "typecheck": "pnpm turbo run typecheck",
+    "validate": "pnpm run lint && pnpm run typecheck && pnpm run test",
+    "docs": "pnpm --filter docs-site dev"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.3"
+  }
+}

@@ -1,0 +1,48 @@
+﻿# OS
+.DS_Store
+Thumbs.db
+
+# Node / pnpm
+node_modules/
+.pnpm-store/
+.pnp.cjs
+.pnp.loader.mjs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+apps/**/.next/
+apps/**/dist/
+apps/**/.turbo/
+packages/**/dist/
+coverage/
+
+# Env & secrets
+.env*
+!.env.example
+.envrc
+.doppler*
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/*.egg-info/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Misc
+reports/
+logs/
+tmp/
+
