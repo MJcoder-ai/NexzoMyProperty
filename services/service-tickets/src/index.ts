@@ -1,20 +1,17 @@
-﻿import { createIdentifier } from '@nexzo/types';
+﻿export const SERVICE_NAME = 'service-tickets';
 
 export interface HealthStatus {
   service: string;
   status: 'ok';
   timestamp: number;
+  uptimeSeconds: number;
 }
+
+const startedAt = Date.now();
 
 export const getHealth = (): HealthStatus => ({
-  service: 'service-tickets',
+  service: SERVICE_NAME,
   status: 'ok',
-  timestamp: Date.now()
+  timestamp: Date.now(),
+  uptimeSeconds: Math.round((Date.now() - startedAt) / 1000)
 });
-
-export const exampleTenantId = () => createIdentifier('tenant-demo');
-
-if (require.main === module) {
-  // eslint-disable-next-line no-console
-  console.log(JSON.stringify(getHealth()));
-}

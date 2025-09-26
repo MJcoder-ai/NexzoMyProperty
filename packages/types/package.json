@@ -1,16 +1,18 @@
-﻿{
-  "name": "@nexzo/types",
-  "version": "0.1.0",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc --project tsconfig.json",
-    "lint": "eslint 'src/**/*.{ts,tsx}'",
-    "test": "jest",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "ts-jest": "^29.2.5"
-  }
+{
+    "name":  "@nexzo/types",
+    "version":  "0.1.0",
+    "main":  "dist/index.js",
+    "types":  "dist/index.d.ts",
+    "scripts":  {
+                    "build":  "tsc --project tsconfig.json",
+                    "lint":  "eslint --ext .ts src",
+                    "test":  "jest",
+                    "typecheck":  "tsc --noEmit"
+                },
+    "dependencies":  {
+
+                     },
+    "devDependencies":  {
+                            "ts-jest":  "^29.2.5"
+                        }
 }

@@ -1,9 +1,10 @@
-﻿import { getHealth } from './index';
+﻿import { getHealth, SERVICE_NAME } from './index';
 
 describe('ai-assistant health', () => {
   it('reports ok status', () => {
     const health = getHealth();
     expect(health.status).toBe('ok');
-    expect(health.service).toBe('ai-assistant');
+    expect(health.service).toBe(SERVICE_NAME);
+    expect(health.uptimeSeconds).toBeGreaterThanOrEqual(0);
   });
 });

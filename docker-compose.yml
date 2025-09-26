@@ -1,0 +1,97 @@
+﻿services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: myproperty
+      POSTGRES_USER: myproperty
+      POSTGRES_PASSWORD: myproperty
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgres://myproperty:myproperty@postgres:5432/myproperty
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+      - redis
+
+  onboarding:
+    build:
+      context: .
+      dockerfile: services/onboarding/Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 4001
+      DATABASE_URL: postgres://myproperty:myproperty@postgres:5432/myproperty
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4001:4001"
+    depends_on:
+      - postgres
+      - redis
+
+  billing:
+    build:
+      context: .
+      dockerfile: services/billing/Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 4002
+      DATABASE_URL: postgres://myproperty:myproperty@postgres:5432/myproperty
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4002:4002"
+    depends_on:
+      - postgres
+      - redis
+
+  service-tickets:
+    build:
+      context: .
+      dockerfile: services/service-tickets/Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 4003
+      DATABASE_URL: postgres://myproperty:myproperty@postgres:5432/myproperty
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4003:4003"
+    depends_on:
+      - postgres
+      - redis
+
+  ai-assistant:
+    build:
+      context: .
+      dockerfile: services/ai-assistant/Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 4004
+      DATABASE_URL: postgres://myproperty:myproperty@postgres:5432/myproperty
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "4004:4004"
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  postgres-data:
+  redis-data:

@@ -1,0 +1,14 @@
+﻿node_modules
+.pnpm-store
+.git
+.gitignore
+Dockerfile
+.dockerignore
+.tmp
+.env*
+coverage
+build
+dist
+.turbo
+.vscode
+.idea
