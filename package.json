@@ -16,6 +16,27 @@
     "docs": "pnpm --filter docs-site dev"
   },
   "devDependencies": {
-    "turbo": "^2.0.3"
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^15.0.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.25",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "eslint": "^9.11.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "prettier": "^3.3.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "tslib": "^2.6.3",
+    "turbo": "^2.0.3",
+    "typescript": "^5.6.3"
   }
 }

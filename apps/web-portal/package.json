@@ -1,0 +1,21 @@
+﻿{
+  "name": "@nexzo/web-portal",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "dev": "echo 'TODO: integrate web framework'",
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nexzo/api-client": "workspace:*",
+    "@nexzo/ui": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "ts-jest": "^29.2.5"
+  }
+}

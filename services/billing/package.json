@@ -1,0 +1,18 @@
+﻿{
+    "version":  "0.1.0",
+    "name":  "@nexzo/billing",
+    "scripts":  {
+                    "test":  "jest",
+                    "typecheck":  "tsc --noEmit",
+                    "build":  "tsc --project tsconfig.json",
+                    "dev":  "ts-node src/index.ts",
+                    "lint":  "eslint \u0027src/**/*.ts\u0027"
+                },
+    "devDependencies":  {
+                            "ts-jest":  "^29.2.5"
+                        },
+    "dependencies":  {
+                         "@nexzo/types":  "workspace:*"
+                     },
+    "private":  true
+}
