@@ -9,9 +9,8 @@ const config: Config = {
   setupFilesAfterEnv: ['@testing-library/jest-dom'],
   collectCoverageFrom: ['src/**/*.{ts,tsx}'],
   moduleNameMapper: pathsToModuleNameMapper(tsconfig.compilerOptions.paths ?? {}, {
-    prefix: '<rootDir>/../../'
-  })
+    prefix: '<rootDir>/../../',
+  }),
 };
 
 export default config;
-

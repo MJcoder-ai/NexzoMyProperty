@@ -1,3 +1,4 @@
+.turbo/
 # OS
 .DS_Store
 Thumbs.db
@@ -15,6 +16,7 @@ yarn-error.log*
 # Build outputs
 apps/**/.next/
 apps/**/dist/
+services/**/dist/
 apps/**/.turbo/
 packages/**/dist/
 coverage/

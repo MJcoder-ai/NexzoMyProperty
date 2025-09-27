@@ -1,19 +1,23 @@
 {
-    "name":  "@nexzo/api-gateway",
-    "version":  "0.1.0",
-    "private":  true,
-    "scripts":  {
-                    "build":  "tsc --project tsconfig.json",
-                    "dev":  "ts-node src/server.ts",
-                    "start":  "node dist/server.js",
-                    "lint":  "eslint --ext .ts src",
-                    "test":  "jest",
-                    "typecheck":  "tsc --noEmit"
-                },
-    "dependencies":  {
-                         "@nexzo/types":  "workspace:*"
-                     },
-    "devDependencies":  {
-                            "ts-jest":  "^29.2.5"
-                        }
+  "name": "@nexzo/api-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "dev": "ts-node src/server.ts",
+    "start": "node dist/server.js",
+    "lint": "eslint --ext .ts src",
+    "test": "jest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nexzo/types": "workspace:*",
+    "@nexzo/core": "workspace:*",
+    "@fastify/cors": "^8.4.2",
+    "@nexzo/db": "workspace:*"
+  },
+  "devDependencies": {
+    "ts-jest": "^29.2.5",
+    "supertest": "^7.1.1"
+  }
 }

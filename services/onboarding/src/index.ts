@@ -1,17 +1,13 @@
-﻿export const SERVICE_NAME = 'onboarding';
+import { SERVICE_NAME, SERVICE_VERSION } from './server';
 
-export interface HealthStatus {
-  service: string;
-  status: 'ok';
-  timestamp: number;
-  uptimeSeconds: number;
-}
+export { buildServer, start, SERVICE_NAME, SERVICE_VERSION } from './server';
 
 const startedAt = Date.now();
 
-export const getHealth = (): HealthStatus => ({
+export const getHealth = () => ({
   service: SERVICE_NAME,
-  status: 'ok',
+  status: 'ok' as const,
+  version: SERVICE_VERSION,
   timestamp: Date.now(),
-  uptimeSeconds: Math.round((Date.now() - startedAt) / 1000)
+  uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
 });

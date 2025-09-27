@@ -1,0 +1,19 @@
+{
+  "name": "@nexzo/core",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json"
+  },
+  "dependencies": {
+    "@fastify/cors": "^8.4.2",
+    "fastify": "^4.29.1",
+    "fastify-type-provider-zod": "^2.1.0",
+    "zod": "^3.25.6"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

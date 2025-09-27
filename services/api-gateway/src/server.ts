@@ -1,32 +1,29 @@
-﻿import { createServer } from 'node:http';
-import { getHealth } from './index';
+import { createServiceApp, env } from '@nexzo/core';
+import { registerApiGatewayRoutes } from './routes';
 
-const port = Number(process.env.PORT ?? 3000);
+export const SERVICE_NAME = 'api-gateway';
+export const SERVICE_VERSION = '0.1.0';
 
-const server = createServer((req, res) => {
-  if (!req.url) {
-    res.statusCode = 400;
-    res.end('Bad request');
-    return;
-  }
+export const buildServer = async () => {
+  const app = await createServiceApp({
+    serviceName: SERVICE_NAME,
+    version: SERVICE_VERSION,
+  });
+  await registerApiGatewayRoutes(app);
+  return app;
+};
 
-  if (req.url === '/' || req.url === '/healthz') {
-    res.setHeader('Content-Type', 'application/json');
-    res.writeHead(200);
-    res.end(JSON.stringify(getHealth()));
-    return;
-  }
-
-  res.writeHead(404);
-  res.end('Not Found');
-});
+export const start = async () => {
+  const app = await buildServer();
+  const port = env.PORT ?? 3000;
+  await app.listen({ port, host: '0.0.0.0' });
+  return app;
+};
 
 if (require.main === module) {
-  server.listen(port, () => {
+  start().catch((error) => {
     // eslint-disable-next-line no-console
-    const health = getHealth();
-    console.log(`[${health.service}] listening on port ${port}`);
+    console.error('Failed to start api-gateway service', error);
+    process.exit(1);
   });
 }
-
-export default server;

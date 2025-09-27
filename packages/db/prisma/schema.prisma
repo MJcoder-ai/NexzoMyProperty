@@ -78,6 +78,7 @@ model Tenant {
   meters      Meter[]
   meterReadings MeterReading[]
   allocationLedgers AllocationLedger[]
+  invitations TenantInvitation[]
 }
 
 model User {
@@ -100,10 +101,28 @@ model User {
   ticketActivities     TicketActivity[]
   allocationAdjustments AllocationAdjustment[]
   agentAudits          AgentAudit[]
+  invitationsSent      TenantInvitation[] @relation("TenantInvitationInviters")
 
   @@unique([tenantId, email])
 }
 
+model TenantInvitation {
+  id          String   @id @default(uuid())
+  tenantId    String
+  email       String
+  invitedById String?
+  role        UserRole @default(TENANT)
+  token       String   @unique
+  status      String   @default("pending")
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  invitedBy   User?    @relation("TenantInvitationInviters", fields: [invitedById], references: [id])
+
+  @@unique([tenantId, email])
+}
 model Property {
   id                    String   @id @default(uuid())
   tenantId              String

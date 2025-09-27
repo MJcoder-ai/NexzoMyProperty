@@ -1,11 +1,12 @@
-﻿{
+{
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "baseUrl": "src"
+    "baseUrl": ".",
+    "paths": {
+      "@nexzo/*": ["../../packages/*/src"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
