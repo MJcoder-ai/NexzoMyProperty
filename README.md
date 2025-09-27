@@ -30,9 +30,11 @@ docs/               Product, architecture, ops, security documentation
 - Product/architecture requirements, data models, API contracts, security, AI guardrails all included in respective subdirectories.
 
 ## Contributing
+- Review `[AGENTS.md](AGENTS.md)` for repository-wide contribution practices.
 - Follow `docs/05-dev/Coding-Standards.md`.
 - Update relevant docs alongside code changes.
 - Run `pnpm run validate` before opening a PR.
 
 ## Licensing & Ownership
 Copyright © 2025 Nexzo. Internal use only.
+
